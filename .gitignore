@@ -1,0 +1,42 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+
+# Virtual environments
+.venv
+
+#Environment variables
+.env
+
+
+# ── Terraform ─────────────────────────────────────────────────────────────────
+
+# Provider plugins and modules — re-downloaded via terraform init
+terraform/environments/dev/.terraform/
+terraform/environments/prod/.terraform/
+
+# Lock file — tracks provider versions, safe to commit but optional
+terraform/environments/dev/.terraform.lock.hcl
+terraform/environments/prod/.terraform.lock.hcl
+
+# State files — always use S3 backend
+terraform/environments/dev/*.tfstate
+terraform/environments/dev/*.tfstate.backup
+terraform/environments/prod/*.tfstate
+terraform/environments/prod/*.tfstate.backup
+
+# S3 native lock files
+terraform/environments/dev/*.tflock
+terraform/environments/prod/*.tflock
+
+# Sensitive variable files
+terraform/environments/dev/terraform.tfvars
+terraform/environments/prod/terraform.tfvars
+
+# Plan files — can contain sensitive data
+terraform/environments/dev/*.tfplan
+terraform/environments/prod/*.tfplan
