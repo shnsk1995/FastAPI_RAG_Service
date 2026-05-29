@@ -78,7 +78,7 @@ module enforce the pipeline order.
 from uuid import uuid4
 
 from app.config import settings
-from app.schemas.chat import ChatCompletionRequest,ChatCompletionResponse
+from app.schemas.chat import ChatCompletionRequest,ChatCompletionResponse , ChatMessage, ChatHistoryResponse
 from app.services.llm_client import LLMClient
 from app.repositories.conversation_store import ConversationStore
 
@@ -131,4 +131,31 @@ class ChatService:
         return ChatCompletionResponse(
         conversation_id=conversation_id,
         message=answer
+        )
+
+
+    async def get_chat_history(self, conversation_id : str) -> ChatCompletionResponse:
+
+        previous_messages = self.conversation_store.get_messages(
+            conversation_id = conversation_id,
+            limit = settings.CHAT_HISTORY_LIMIT
+        )
+
+        messages = [
+                
+                
+            ChatMessage(
+                role = message["role"],
+                content = message["content"],
+                created_at = message["created_at"],
+            )
+                
+            for message in previous_messages
+            if message.get("role") in {"user","assistant"}
+            and message.get("content")
+        ]
+
+        return ChatHistoryResponse(
+            conversation_id = conversation_id,
+            chat_hisotry = messages
         )
