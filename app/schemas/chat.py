@@ -50,6 +50,7 @@
 #     latency_ms: int
 
 from pydantic import BaseModel, Field
+from typing import Literal
 
 
 class ChatCompletionRequest(BaseModel):
@@ -74,3 +75,16 @@ class ChatCompletionResponse(BaseModel):
     #cache_status: CacheStatus
     #model: str
     #latency_ms: int
+
+
+class ChatHistoryRequest(BaseModel):
+    conversation_id: str
+
+class ChatMessage(BaseModel):
+    role: Literal["user","assistant"]
+    content: str
+    created_at : str
+
+class ChatHistoryResponse(BaseModel):
+    conversation_id: str
+    chat_hisotry: list[ChatMessage]

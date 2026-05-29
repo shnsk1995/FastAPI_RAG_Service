@@ -53,7 +53,7 @@ All routes require JWT auth + Scope.CHAT_READ.
 # async def delete_conversation(conversation_id: str, ...): ...
 
 from fastapi import APIRouter, Depends
-from app.schemas.chat import ChatCompletionRequest, ChatCompletionResponse
+from app.schemas.chat import ChatCompletionRequest, ChatCompletionResponse , ChatHistoryRequest, ChatHistoryResponse
 from app.services.chat_service import ChatService
 from app.api.deps import get_chat_service
 
@@ -68,3 +68,8 @@ router = APIRouter(
 @router.post("", response_model=ChatCompletionResponse)
 async def chat(request: ChatCompletionRequest, chat_service: ChatService = Depends(get_chat_service)):
     return await chat_service.generate_response(request)
+
+
+@router.get("/{conversation_id}/messages", response_model=ChatHistoryResponse)
+async def get_conversation_messages(conversation_id: str, chat_service: ChatService = Depends(get_chat_service)):
+    return await chat_service.get_chat_history(conversation_id)
