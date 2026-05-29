@@ -81,6 +81,9 @@ from app.config import settings
 from app.schemas.chat import ChatCompletionRequest,ChatCompletionResponse , ChatMessage, ChatHistoryResponse
 from app.services.llm_client import LLMClient
 from app.repositories.conversation_store import ConversationStore
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 class ChatService:
 
@@ -92,9 +95,22 @@ class ChatService:
 
         conversation_id = request.conversation_id or str(uuid4())
 
+        logger.info(
+            "chat_request_started",
+            conversation_id=conversation_id,
+            message_length=len(request.message),
+            has_existing_conversation=bool(request.conversation_id),
+        )
+
         previous_messages = self.conversation_store.get_messages(
             conversation_id=conversation_id,
             limit=settings.CHAT_HISTORY_LIMIT
+        )
+
+        logger.info(
+            "chat_history_loaded",
+            conversation_id=conversation_id,
+            history_message_count=len(previous_messages),
         )
 
         llm_messages =[
@@ -118,14 +134,35 @@ class ChatService:
             content=request.message,
         )
 
+        logger.info(
+            "user_message_saved",
+            conversation_id=conversation_id,
+        )
+
 
         answer = await self.llm_client.generate_response(llm_messages)
+
+        logger.info(
+            "llm_response_generated",
+            conversation_id=conversation_id,
+            answer_length=len(answer),
+        )
 
         
         self.conversation_store.save_message(
             conversation_id=conversation_id,
             role="assistant",
             content=answer,
+        )
+
+        logger.info(
+            "assistant_message_saved",
+            conversation_id=conversation_id,
+        )
+
+        logger.info(
+            "chat_request_completed",
+            conversation_id=conversation_id,
         )
 
         return ChatCompletionResponse(

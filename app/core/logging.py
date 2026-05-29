@@ -29,3 +29,68 @@ full document contents — log hashes and lengths instead.
 # - ERROR: 5xx, upstream failures, with exc_info.
 # - Never log: bearer tokens, full chat content, document text bodies,
 #             embedding vectors. Hash sensitive identifiers if needed.
+
+import logging
+import sys
+from typing import Any
+
+import structlog
+
+from app.config import settings
+
+def configure_logging() -> None:
+    """
+
+    Configure application logging.
+
+    Local environment:
+        Human-readable console logs.
+
+    Non-local environments:
+        JSON logs suitable for CloudWatch, Lambda, ECS, and log search.
+
+    """
+
+    log_level_name = settings.LOG_LEVEL.upper()
+    log_level = getattr(logging, log_level_name, logging.INFO)
+
+    logging.basicConfig(
+        format="%(message)s",
+        stream=sys.stdout,
+        level=log_level,
+        force=True,
+    )
+
+    shared_processors: list[Any] = [
+        structlog.processors.add_log_level,
+        structlog.processors.TimeStamper(fmt="iso", utc=True),
+        structlog.processors.StackInfoRenderer(),
+        structlog.processors.format_exc_info,
+        structlog.processors.UnicodeDecoder(),
+    ]
+
+    if settings.APP_ENV =="local":
+        renderer = structlog.dev.ConsoleRenderer()
+    else:
+        renderer = structlog.processors.JSONRenderer()
+
+    
+    structlog.configure(
+        processors=[
+            *shared_processors,
+            renderer,
+        ],
+        wrapper_class=structlog.make_filtering_bound_logger(log_level),
+        context_class=dict,
+        logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
+        cache_logger_on_first_use=True,
+    )
+
+
+def get_logger(name: str):
+    """Return a structured logger with common service fields."""
+
+    return structlog.get_logger(name).bind(
+        service=settings.APP_NAME,
+        environment=settings.APP_ENV,
+    )
