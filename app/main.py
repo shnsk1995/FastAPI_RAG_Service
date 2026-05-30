@@ -18,6 +18,8 @@ from app.config import settings
 from app.api.v1.health import router as health_router
 from app.api.v1.chat import router as chat_router
 from app.exceptions import register_exception_handlers
+from app.core.logging import configure_logging, get_logger
+from app.core.middleware import RequestLoggingMiddleware
 
 
 def create_app() -> FastAPI:
@@ -34,16 +36,26 @@ def create_app() -> FastAPI:
        in startup hook so cold-start latency is paid once per container.
     8. Return the app.
     """
+
+    configure_logging()
+
+    logger = get_logger(__name__)
+    logger.info("application_starting")
+
     app = FastAPI(
         title = settings.APP_NAME,
         version="0.1.0",
         description="Backend service for chat and document ingestion",
     )
 
+    app.add_middleware(RequestLoggingMiddleware)
+
     app.include_router(health_router)
     app.include_router(chat_router)
 
     register_exception_handlers(app)
+
+    logger.info("application_started")
 
     return app
 

@@ -82,7 +82,7 @@ BASE_DIR = Path(__file__).resolve().parents[1]
 class Settings(BaseSettings):
     APP_NAME: str = "Chat and Ingestion Service"
     APP_ENV: Literal["local","dev","staging","prod"] = "local"
-    #LOG_LEVEL: Literal["INFO","DEBUG","WARNING"] = "INFO"
+    LOG_LEVEL: Literal["INFO","DEBUG","WARNING"] = "INFO"
     AWS_PROFILE: str
     AWS_REGION: str = "us-east-2"
 #

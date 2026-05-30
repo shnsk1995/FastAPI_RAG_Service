@@ -34,6 +34,9 @@ Responsibilities:
 from anthropic import AsyncAnthropic
 from app.config import settings
 from app.exceptions import LLMServiceError
+from app.core.logging import get_logger
+
+logger = get_logger(__name__)
 
 
 
@@ -50,6 +53,18 @@ class LLMClient:
   async def generate_response(self, messages: list[dict[str, str]]) -> str:
 
     try:
+
+      logger.info(
+        "llm_request_started",
+        model=settings.ANTHROPIC_MODEL,
+        message_count=len(messages),
+        max_tokens=settings.ANTHROPIC_MAX_TOKENS,
+        temperature=settings.ANTHROPIC_TEMPERATURE
+      )
+
+
+
+
       response = await self.client.messages.create(
         model=settings.ANTHROPIC_MODEL,
         max_tokens=settings.ANTHROPIC_MAX_TOKENS,
@@ -59,16 +74,34 @@ class LLMClient:
       )
 
       if not response.content:
-        return "I could not generate a response."
+        raise LLMServiceError("Empty response from LLM provider.")
 
       first_block = response.content[0]
 
-      if first_block.type == "text":
-        return first_block.text
+      if first_block.type != "text":
+        raise LLMServiceError("Unsupported response type from LLM provider")
+      
+      answer = first_block.text
 
-      raise LLMServiceError("Unsupported response type from LLM provider")
+      logger.info(
+        "llm_request_completed",
+        model=settings.ANTHROPIC_MODEL,
+        answer_length=len(answer),
+        input_tokens=response.usage.input_tokens if response.usage else None,
+        output_tokens=response.usage.output_tokens if response.usage else None,
+      )
+
+      return answer
+
+      
 
     except LLMServiceError:
+
+      logger.warning(
+        "llm_request_failed",
+        model=settings.ANTHROPIC_MODEL,
+      )
+
       raise
 
     except Exception as exc:

@@ -29,3 +29,57 @@ Order in create_app() (outermost first):
 #     Bypass for ingest:process scope (service-to-service).
 #     """
 #     ...
+
+
+import time
+from uuid import uuid4
+
+from fastapi import Request
+from starlette.middleware.base import BaseHTTPMiddleware
+
+from app.core.logging import get_logger, bind_request_context, clear_request_context
+
+logger = get_logger(__name__)
+
+
+class RequestLoggingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request: Request, call_next):
+        request_id = request.headers.get("x-request-id", str(uuid4()))
+        start_time = time.perf_counter()
+
+        bind_request_context(
+            request_id=request_id,
+            method=request.method,
+            path=request.url.path,
+        )
+
+        try:
+
+            logger.info("http_request_started")
+
+            response = await call_next(request)
+
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            response.headers["x-request-id"] = request_id
+
+            logger.info(
+                "http_request_completed",
+                status_code=response.status_code,
+                latency_ms = latency_ms,
+            )
+
+            return response
+        
+        except Exception:
+            latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
+
+            logger.exception(
+                "http_request_failed",
+                latency_ms=latency_ms,
+            )
+
+            raise
+        
+        finally:
+            clear_request_context()

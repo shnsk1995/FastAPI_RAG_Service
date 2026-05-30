@@ -25,6 +25,10 @@ Goals:
 # class NotFoundError(AppError):       404 / "not_found"
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from app.core.logging import get_logger
+from fastapi.exceptions import RequestValidationError
+
+logger = get_logger(__name__)
 
 class LLMServiceError(Exception):
   """Raised when the LLM provider fails."""
@@ -50,6 +54,15 @@ def register_exception_handlers(app: FastAPI) -> None:
     """
     @app.exception_handler(LLMServiceError)
     async def llm_service_error_handler(request: Request, exc: LLMServiceError):
+
+
+      logger.error(
+        "llm_service_error",
+        path=request.url.path,
+        method=request.method,
+        message=exc.message,
+      )
+
       return JSONResponse(
         status_code=502,
         content={
@@ -61,12 +74,49 @@ def register_exception_handlers(app: FastAPI) -> None:
 
     @app.exception_handler(ConversationStoreError)
     async def conversation_store_error_handler(request: Request, exc: ConversationStoreError):
+
+
+
+      logger.error(
+        "conversation_store_error",
+        path=request.url.path,
+        method=request.method,
+        message=exc.message,
+      )
+
       return JSONResponse(
         status_code=503,
         content={
           "error" : "conversation_store_error",
           "message" : exc.message,
         }
+      )
+
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(request : Request, exc : RequestValidationError):
+      logger.warning(
+        "request_validation_error",
+        path=request.url.path,
+        method=request.method,
+        error_count=len(exc.errors()),
+      )
+
+
+      return JSONResponse(
+        status_code=422,
+        content={
+          "error" : "validation_error",
+          "message" : "Invalid request payload",
+          "details" : [
+            {
+              "field" : ".".join(str(part) for part in error.get("loc", [])),
+              "message" : error.get("msg"),
+              "type" : error.get("type"),
+            }
+            for error in exc.errors()
+          ],
+        },
       )
 
 
