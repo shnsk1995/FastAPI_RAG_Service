@@ -28,3 +28,6 @@ dev = [
 pythonpath = ["."]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+markers = [
+    "integration: tests that require external services such as AWS DynamoDB"
+]

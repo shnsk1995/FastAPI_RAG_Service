@@ -142,3 +142,32 @@ class ConversationStore:
             raise ConversationStoreError(
                 "Failed to fetch conversation history"
             ) from exc
+    
+
+    def delete_conversation(self, conversation_id: str) -> None:
+        try:
+            messages = self.get_messages(conversation_id=conversation_id, limit=100)
+
+            for message in messages:
+                self.table.delete_item(
+                    Key={
+                        "conversation_id": conversation_id,
+                        "created_at": message["created_at"],
+                    }
+                )
+
+            logger.info(
+                "conversation_deleted",
+                conversation_id=conversation_id,
+                message_count=len(messages),
+            )
+
+        except (BotoCoreError, ClientError) as exc:
+            logger.exception(
+                "conversation_delete_failed",
+                conversation_id=conversation_id,
+            )
+
+            raise ConversationStoreError(
+                "Failed to delete conversation"
+            ) from exc
