@@ -194,5 +194,5 @@ class ChatService:
 
         return ChatHistoryResponse(
             conversation_id = conversation_id,
-            chat_hisotry = messages
+            chat_history = messages
         )

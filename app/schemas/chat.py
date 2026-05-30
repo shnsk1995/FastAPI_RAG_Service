@@ -87,4 +87,4 @@ class ChatMessage(BaseModel):
 
 class ChatHistoryResponse(BaseModel):
     conversation_id: str
-    chat_hisotry: list[ChatMessage]
+    chat_history: list[ChatMessage]

@@ -16,3 +16,18 @@ dependencies = [
     "structlog>=25.5.0",
     "uvicorn[standard]>=0.48.0",
 ]
+
+[dependency-groups]
+dev = [
+    "httpx>=0.28.1",
+    "pytest>=9.0.3",
+    "pytest-asyncio>=1.4.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "integration: tests that require external services such as AWS DynamoDB"
+]
