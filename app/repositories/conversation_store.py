@@ -37,6 +37,10 @@ from botocore.exceptions import BotoCoreError, ClientError
 
 from app.config import settings
 from app.exceptions import ConversationStoreError
+from app.core.logging import get_logger
+
+
+logger=get_logger(__name__)
 
 
 MessageRole = Literal["user","assistant"]
@@ -63,6 +67,13 @@ class ConversationStore:
 
             created_at = datetime.now(timezone.utc).isoformat()
 
+            logger.info(
+                "conversation_message_save_started",
+                conversation_id=conversation_id,
+                role=role,
+                content_length=len(content),
+            )
+
             self.table.put_item(
                 Item={
                     "conversation_id" : conversation_id,
@@ -72,7 +83,20 @@ class ConversationStore:
                 }
             )
 
+            logger.info(
+                "conversation_message_save_completed",
+                conversation_id=conversation_id,
+                role=role,
+                created_at=created_at,
+            )
+
         except (BotoCoreError, ClientError) as exc:
+
+            logger.exception(
+                "conversation_message_save_failed",
+                conversation_id=conversation_id,
+                role=role,
+            )
             raise ConversationStoreError(
                 "Failed to save conversation message"
             ) from exc
@@ -83,18 +107,38 @@ class ConversationStore:
         
         try:
 
+            logger.info(
+                "conversation_history_fetch_started",
+                conversation_id=conversation_id,
+                limit=limit,
+            )
+
             response = self.table.query(
                 KeyConditionExpression=Key("conversation_id").eq(conversation_id),
                 ScanIndexForward=False,
                 Limit=limit,
             )
 
-
             items = response.get("Items",[])
+
+            logger.info(
+                "conversation_history_fetch_completed",
+                conversation_id=conversation_id,
+                message_count=len(items),
+            )
+
+
+            
 
             return list(reversed(items))
 
         except (BotoCoreError, ClientError) as exc:
+
+            logger.exception(
+                "conversation_history_fecth_failed",
+                conversation_id=conversation_id
+            )
+            
             raise ConversationStoreError(
                 "Failed to fetch conversation history"
             ) from exc

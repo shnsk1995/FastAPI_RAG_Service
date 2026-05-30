@@ -35,6 +35,11 @@ import sys
 from typing import Any
 
 import structlog
+from structlog.contextvars import (
+    bind_contextvars,
+    clear_contextvars,
+    merge_contextvars
+)
 
 from app.config import settings
 
@@ -62,6 +67,7 @@ def configure_logging() -> None:
     )
 
     shared_processors: list[Any] = [
+        merge_contextvars,
         structlog.processors.add_log_level,
         structlog.processors.TimeStamper(fmt="iso", utc=True),
         structlog.processors.StackInfoRenderer(),
@@ -85,6 +91,18 @@ def configure_logging() -> None:
         logger_factory=structlog.PrintLoggerFactory(file=sys.stdout),
         cache_logger_on_first_use=True,
     )
+
+
+def bind_request_context(request_id : str, method : str | None = None, path : str | None = None) -> None:
+    bind_contextvars(
+        request_id=request_id,
+        method=method,
+        path=path,
+    )
+
+    
+def clear_request_context() -> None:
+    clear_contextvars()
 
 
 def get_logger(name: str):
