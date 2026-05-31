@@ -35,15 +35,9 @@ from app.services.chat_service import ChatService
 from app.services.llm_client import LLMClient
 from app.repositories.conversation_store import ConversationStore
 from app.integrations.input_guardrail_client import InputGuardrailClient
+from app.dependencies import get_conversation_store,get_llm_client,get_input_guardrail_client
 
-def get_llm_client()-> LLMClient:
-    return LLMClient()
 
-def get_conversation_store()-> ConversationStore:
-    return ConversationStore()
-
-def get_input_guardrail_client()-> InputGuardrailClient:
-    return InputGuardrailClient()
 
 def get_chat_service(
     llm_client : LLMClient = Depends(get_llm_client), 

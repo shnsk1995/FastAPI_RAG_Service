@@ -125,13 +125,13 @@ class InputGuardrailClient:
             )
 
         if action == "GUARDRAIL_INTERVENED":
-            if processed_input and processed_input != cleaned_input:
+            if processed_input and processed_input == "Sorry, the model cannot answer this question.":
                 return InputGuardrailResult(
                     original_input=original_input,
                     processed_input=processed_input,
-                    was_blocked=False,
-                    block_reason=None,
-                    guardrail_action="masked" if pii_detected else "none",
+                    was_blocked=True,
+                    block_reason="Sorry, the model cannot answer this question.",
+                    guardrail_action="blocked",
                     pii_detected=pii_detected,
                     prompt_attack_detected=prompt_attack_detected,
                 )
@@ -140,7 +140,7 @@ class InputGuardrailClient:
                 original_input=original_input,
                 processed_input="",
                 was_blocked=True,
-                block_reason="Input blocked by guardrail.",
+                block_reason="Sorry, the model cannot answer this question.",
                 guardrail_action="blocked",
                 pii_detected=pii_detected,
                 prompt_attack_detected=prompt_attack_detected,
