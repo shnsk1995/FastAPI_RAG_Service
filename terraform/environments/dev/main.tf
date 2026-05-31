@@ -5,7 +5,7 @@ terraform {
     required_providers {
         aws = {
             source = "hashicorp/aws"
-            version = "~> 5.0"
+            version = "~> 6.6.0"
         }
     }
 
@@ -56,4 +56,18 @@ module "dynamodb" {
     ttl_attribute = "expiresAt"
 
     tags = var.common_tags
+}
+
+
+module "bedrock_guardrails" {
+    source = "../../modules/bedrock_guardrails"
+
+    project_name = var.project_name
+    environment = var.environment
+
+    blocked_input_messaging = "Sorry, the model cannot answer this question."
+    blocked_outputs_messaging = "Sorry, the model cannot answer this question."
+
+    aws_region = var.aws_region
+    aws_account_id = var.aws_account_id
 }

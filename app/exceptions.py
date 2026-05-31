@@ -37,11 +37,27 @@ class LLMServiceError(Exception):
     self.message = message
     super().__init__(self.message)
 
+
+
+
+class InputGuardrailError(Exception):
+  """Raised when input guardrail processing fails."""
+
+  def __init__(self, message : str = "Input guardrail processing failed"):
+    self.message = message
+    super().__init__(self.message)
+
+
+
+
 class ConversationStoreError(Exception):
 
   def __init__(self, message: str = "Conversation store failed"):
     self.message =message
     super().__init__(self.message)
+
+
+
 
 def register_exception_handlers(app: FastAPI) -> None:
     """Attach handlers for AppError, RequestValidationError, HTTPException, Exception.
@@ -117,6 +133,26 @@ def register_exception_handlers(app: FastAPI) -> None:
             for error in exc.errors()
           ],
         },
+      )
+    
+
+
+
+    @app.exception_handler(InputGuardrailError)
+    async def input_guardrail_error(request : Request, exc : InputGuardrailError):
+      logger.error(
+        "input_guardrail_error",
+        path=request.url.path,
+        method=request.method,
+        message=exc.message,
+      )
+
+      return JSONResponse(
+        status_code=502,
+        content={
+          "error" : "input_guardrail_error",
+          "message" : exc.message
+        }
       )
 
 

@@ -1,6 +1,7 @@
 import pytest
 
 from app.schemas.chat import ChatCompletionRequest
+from app.schemas.input_guardrail import InputGuardrailResult
 from app.services.chat_service import ChatService
 
 class FakeLLMClient:
@@ -10,6 +11,8 @@ class FakeLLMClient:
     async def generate_response(self, messages):
         self.received_messages = messages
         return "Fake LLM answer"
+
+
 
 
 class FakeConversationStore:
@@ -39,6 +42,23 @@ class FakeConversationStore:
             }
         )
 
+class FakeInputGuardrailClient:
+    def __init__(self):
+        self.raw_input = None
+    
+    async def process_input(self, raw_input : str):
+        self.raw_input = raw_input
+
+        return InputGuardrailResult(
+            original_input=self.raw_input,
+            processed_input=self.raw_input.strip(),
+            was_blocked=False,
+            block_reason=None,
+            guardrail_action='none',
+            pii_detected=False,
+            prompt_attack_detected=False,
+        )
+
 
 
 
@@ -46,10 +66,12 @@ class FakeConversationStore:
 async def test_chat_service_uses_history_and_saves_messages():
     llm_client = FakeLLMClient()
     conversation_store = FakeConversationStore()
+    input_guardrail_client = FakeInputGuardrailClient()
 
     service = ChatService(
         llm_client=llm_client,
-        conversation_store=conversation_store
+        conversation_store=conversation_store,
+        input_guardrail_client=input_guardrail_client,
     )
 
     request = ChatCompletionRequest(
@@ -89,3 +111,5 @@ async def test_chat_service_uses_history_and_saves_messages():
             "content": "Fake LLM answer",
         },
     ]
+
+    assert input_guardrail_client.raw_input == "What is my name?"

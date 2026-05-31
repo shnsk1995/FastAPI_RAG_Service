@@ -19,3 +19,19 @@ Redis).
 # get_current_user(token)     -> AuthenticatedUser (decoded JWT claims)
 # require_scopes(*scopes)     -> dependency factory for RBAC scope checks
 # get_request_context()       -> RequestContext (request_id, tenant_id, user_id)
+from app.services.llm_client import LLMClient
+from app.repositories.conversation_store import ConversationStore
+from app.integrations.input_guardrail_client import InputGuardrailClient
+from functools import lru_cache
+
+@lru_cache(maxsize=1)
+def get_llm_client()-> LLMClient:
+    return LLMClient()
+
+@lru_cache(maxsize=1)
+def get_conversation_store()-> ConversationStore:
+    return ConversationStore()
+
+@lru_cache(maxsize=1)
+def get_input_guardrail_client()-> InputGuardrailClient:
+    return InputGuardrailClient()

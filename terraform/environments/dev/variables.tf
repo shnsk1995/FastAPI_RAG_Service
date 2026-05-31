@@ -12,6 +12,12 @@ variable "aws_profile" {
   default     = ""
 }
 
+variable "aws_account_id" {
+  description = "AWS account ID"
+  type        = string
+  default     = ""
+}
+
 
 
 variable "project_name" {
