@@ -34,6 +34,7 @@ from fastapi import Depends
 from app.services.chat_service import ChatService
 from app.services.llm_client import LLMClient
 from app.repositories.conversation_store import ConversationStore
+from app.integrations.input_guardrail_client import InputGuardrailClient
 
 def get_llm_client()-> LLMClient:
     return LLMClient()
@@ -41,5 +42,12 @@ def get_llm_client()-> LLMClient:
 def get_conversation_store()-> ConversationStore:
     return ConversationStore()
 
-def get_chat_service(llm_client: LLMClient = Depends(get_llm_client), conversation_store: ConversationStore = Depends(get_conversation_store)) -> ChatService:
-    return ChatService(llm_client=llm_client, conversation_store=conversation_store)
+def get_input_guardrail_client()-> InputGuardrailClient:
+    return InputGuardrailClient()
+
+def get_chat_service(
+    llm_client : LLMClient = Depends(get_llm_client), 
+    conversation_store : ConversationStore = Depends(get_conversation_store),
+    input_guardrail_client : InputGuardrailClient = Depends(get_input_guardrail_client),
+    ) -> ChatService:
+    return ChatService(llm_client=llm_client, conversation_store=conversation_store, input_guardrail_client = input_guardrail_client)

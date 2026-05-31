@@ -100,7 +100,31 @@ class Settings(BaseSettings):
     ANTHROPIC_MAX_TOKENS : int = 1000
     ANTHROPIC_TEMPERATURE : float = 0.5
     #PROMPT_CACHE_TTL_SECONDS  : int = 300     # informational; Anthropic cache TTL is fixed
-#
+
+    #Bedrock LLM
+    #BEDROCK_MODEL_ID: str
+    #BEDROCK_MAX_TOKENS: int = 1000
+    #BEDROCK_TEMPERATURE: float = 0.3
+
+    # Bedrock Knowledge Base
+    #BEDROCK_KNOWLEDGE_BASE_ID: str | None = None
+    #BEDROCK_RETRIEVAL_TOP_K: int = 5
+
+    # Bedrock Guardrail
+    BEDROCK_GUARDRAIL_ID: str | None = None
+    BEDROCK_GUARDRAIL_VERSION: str = "DRAFT"
+    BEDROCK_GUARDRAIL_OUTPUT_SCOPE: Literal["INTERVENTIONS", "FULL"] = "INTERVENTIONS"
+
+    # RAG behavior
+    #RAG_ENABLED: bool = True
+    #RAG_MIN_QUERY_LENGTH: int = 12
+    #RAG_SYSTEM_PROMPT: str = (
+    #"You are a helpful enterprise assistant. "
+    #"Answer using the provided context when context is available. "
+    #"If the context does not contain the answer, say that you do not have enough information. "
+    #"Do not invent policy or document facts."
+#)
+
 #   # Embeddings
     #EMBEDDING_MODEL : str                # e.g. "voyage-3" or "text-embedding-3-large"
     #EMBEDDING_DIM : int

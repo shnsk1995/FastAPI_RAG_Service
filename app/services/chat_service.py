@@ -81,15 +81,17 @@ from app.config import settings
 from app.schemas.chat import ChatCompletionRequest,ChatCompletionResponse , ChatMessage, ChatHistoryResponse
 from app.services.llm_client import LLMClient
 from app.repositories.conversation_store import ConversationStore
+from app.integrations.input_guardrail_client import InputGuardrailClient
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
 class ChatService:
 
-    def __init__(self, llm_client: LLMClient, conversation_store: ConversationStore):
+    def __init__(self, llm_client: LLMClient, conversation_store: ConversationStore, input_guardrail_client : InputGuardrailClient):
         self.llm_client = llm_client
         self.conversation_store = conversation_store
+        self.input_guardrail_client = input_guardrail_client
 
     async def generate_response(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
 
@@ -101,6 +103,34 @@ class ChatService:
             message_length=len(request.message),
             has_existing_conversation=bool(request.conversation_id),
         )
+
+        input_guardrail_response = await self.input_guardrail_client.process_input(request.message)
+
+        logger.info(
+            "input_guardrail_processed",
+            conversation_id=conversation_id,
+            was_blocked=input_guardrail_response.was_blocked,
+            guardrail_action=input_guardrail_response.guardrail_action,
+            pii_detected=input_guardrail_response.pii_detected,
+            prompt_attack_detected=input_guardrail_response.prompt_attack_detected,
+            processed_input_length=len(input_guardrail_response.processed_input),
+        )
+
+        if input_guardrail_response.was_blocked:
+            logger.warning(
+            "chat_request_blocked_by_input_guardrail",
+            conversation_id=conversation_id,
+            block_reason=input_guardrail_response.block_reason,
+            )
+
+            return ChatCompletionResponse(
+                message=input_guardrail_response.block_reason
+                or "I cannot process this request.",
+                conversation_id=conversation_id,
+            )
+
+        safe_user_input = input_guardrail_response.processed_input
+
 
         previous_messages = self.conversation_store.get_messages(
             conversation_id=conversation_id,
@@ -125,19 +155,21 @@ class ChatService:
 
         llm_messages.append({
             "role" : "user",
-            "content" : request.message
+            "content" : safe_user_input
         })
 
         self.conversation_store.save_message(
             conversation_id=conversation_id,
             role="user",
-            content=request.message,
+            content=safe_user_input,
         )
 
         logger.info(
             "user_message_saved",
             conversation_id=conversation_id,
         )
+
+
 
 
         answer = await self.llm_client.generate_response(llm_messages)
