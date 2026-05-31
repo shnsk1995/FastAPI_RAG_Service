@@ -111,3 +111,5 @@ async def test_chat_service_uses_history_and_saves_messages():
             "content": "Fake LLM answer",
         },
     ]
+
+    assert input_guardrail_client.raw_input == "What is my name?"
