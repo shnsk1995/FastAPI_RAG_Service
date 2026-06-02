@@ -20,6 +20,7 @@ Redis).
 # require_scopes(*scopes)     -> dependency factory for RBAC scope checks
 # get_request_context()       -> RequestContext (request_id, tenant_id, user_id)
 from app.services.llm_client import LLMClient
+from app.services.query_rewrite_llm_client import QueryRewriteLLMClient
 from app.repositories.conversation_store import ConversationStore
 from app.integrations.input_guardrail_client import InputGuardrailClient
 from functools import lru_cache
@@ -35,3 +36,7 @@ def get_conversation_store()-> ConversationStore:
 @lru_cache(maxsize=1)
 def get_input_guardrail_client()-> InputGuardrailClient:
     return InputGuardrailClient()
+
+@lru_cache(maxsize=1)
+def get_query_rewrite_llm_client()-> QueryRewriteLLMClient:
+    return QueryRewriteLLMClient()

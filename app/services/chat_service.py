@@ -76,129 +76,87 @@ module enforce the pipeline order.
 #     async def get_conversation(self, conversation_id, user): ...
 #     async def delete_conversation(self, conversation_id, user): ...
 from uuid import uuid4
+from dataclasses import dataclass
+from typing import Any
 
 from app.config import settings
 from app.schemas.chat import ChatCompletionRequest,ChatCompletionResponse , ChatMessage, ChatHistoryResponse
 from app.services.llm_client import LLMClient
+from app.services.query_rewrite_llm_client import QueryRewriteLLMClient
 from app.repositories.conversation_store import ConversationStore
 from app.integrations.input_guardrail_client import InputGuardrailClient
 from app.core.logging import get_logger
 
 logger = get_logger(__name__)
 
+@dataclass
+class ChatContext:
+    request : ChatCompletionRequest
+    conversation_id : str
+    log : Any
+    safe_input : str | None = None
+    
+
+
 class ChatService:
 
-    def __init__(self, llm_client: LLMClient, conversation_store: ConversationStore, input_guardrail_client : InputGuardrailClient):
+    def __init__(self,
+    llm_client: LLMClient,
+    conversation_store: ConversationStore,
+    input_guardrail_client : InputGuardrailClient,
+    query_rewrite_llm_client : QueryRewriteLLMClient,
+    ):
         self.llm_client = llm_client
         self.conversation_store = conversation_store
         self.input_guardrail_client = input_guardrail_client
+        self.query_rewrite_llm_client = query_rewrite_llm_client
 
     async def generate_response(self, request: ChatCompletionRequest) -> ChatCompletionResponse:
 
-        conversation_id = request.conversation_id or str(uuid4())
+        ctx = self._init_context(request)
 
-        logger.info(
+        ctx.log.info(
             "chat_request_started",
-            conversation_id=conversation_id,
             message_length=len(request.message),
             has_existing_conversation=bool(request.conversation_id),
         )
 
-        input_guardrail_response = await self.input_guardrail_client.process_input(request.message)
-
-        logger.info(
-            "input_guardrail_processed",
-            conversation_id=conversation_id,
-            was_blocked=input_guardrail_response.was_blocked,
-            guardrail_action=input_guardrail_response.guardrail_action,
-            pii_detected=input_guardrail_response.pii_detected,
-            prompt_attack_detected=input_guardrail_response.prompt_attack_detected,
-            processed_input_length=len(input_guardrail_response.processed_input),
-        )
-
+        input_guardrail_response = await self._check_input_guardrail(ctx)
+        
         if input_guardrail_response.was_blocked:
-            logger.warning(
+            ctx.log.warning(
             "chat_request_blocked_by_input_guardrail",
-            conversation_id=conversation_id,
             block_reason=input_guardrail_response.block_reason,
             )
 
             return ChatCompletionResponse(
                 message=input_guardrail_response.block_reason
                 or "I cannot process this request.",
-                conversation_id=conversation_id,
+                conversation_id=ctx.conversation_id,
             )
 
-        safe_user_input = input_guardrail_response.processed_input
+        ctx.safe_input = input_guardrail_response.processed_input
 
-
-        previous_messages = self.conversation_store.get_messages(
-            conversation_id=conversation_id,
-            limit=settings.CHAT_HISTORY_LIMIT
-        )
-
-        logger.info(
-            "chat_history_loaded",
-            conversation_id=conversation_id,
-            history_message_count=len(previous_messages),
-        )
-
-        llm_messages =[
-            {
-                "role" : message["role"],
-                "content" : message["content"]
-            }
-            for message in previous_messages
-            if message.get("role") in {"user", "assistant"}
-            and message.get("content")
-        ]
-
-        llm_messages.append({
-            "role" : "user",
-            "content" : safe_user_input
-        })
-
-        self.conversation_store.save_message(
-            conversation_id=conversation_id,
-            role="user",
-            content=safe_user_input,
-        )
-
-        logger.info(
-            "user_message_saved",
-            conversation_id=conversation_id,
-        )
-
-
-
-
-        answer = await self.llm_client.generate_response(llm_messages)
-
-        logger.info(
-            "llm_response_generated",
-            conversation_id=conversation_id,
-            answer_length=len(answer),
-        )
-
+        previous_messages = self._get_previous_messages(ctx)
         
-        self.conversation_store.save_message(
-            conversation_id=conversation_id,
-            role="assistant",
-            content=answer,
-        )
+        llm_messages = self._build_llm_messages(previous_messages, ctx.safe_input)
 
-        logger.info(
-            "assistant_message_saved",
-            conversation_id=conversation_id,
-        )
+        rewritten_user_query = await self._rewrite_user_query(llm_messages)
 
-        logger.info(
+        ctx.safe_input = rewritten_user_query
+
+        llm_messages[-1]["content"] = rewritten_user_query
+        
+        self._persist_user_message(ctx)
+        answer = await self.llm_client.generate_response(llm_messages)
+        self._persist_assistant_message(ctx, answer)
+
+        ctx.log.info(
             "chat_request_completed",
-            conversation_id=conversation_id,
         )
 
         return ChatCompletionResponse(
-        conversation_id=conversation_id,
+        conversation_id=ctx.conversation_id,
         message=answer
         )
 
@@ -228,3 +186,87 @@ class ChatService:
             conversation_id = conversation_id,
             chat_history = messages
         )
+
+    
+    def _init_context(self, request : ChatCompletionRequest) -> ChatContext:
+        conversation_id = request.conversation_id or str(uuid4())
+        return ChatContext(
+            request = request,
+            conversation_id=conversation_id,
+            log=logger.bind(conversation_id=conversation_id),
+            safe_input = None,
+            
+        )
+
+    async def _check_input_guardrail(self, ctx : ChatCompletionRequest):
+        input_guardrail_response = await self.input_guardrail_client.process_input(ctx.request.message)
+        
+        ctx.log.info(
+            "input_guardrail_processed",
+            was_blocked=input_guardrail_response.was_blocked,
+            guardrail_action=input_guardrail_response.guardrail_action,
+            pii_detected=input_guardrail_response.pii_detected,
+            prompt_attack_detected=input_guardrail_response.prompt_attack_detected,
+            processed_input_length=len(input_guardrail_response.processed_input),
+        )
+
+        return input_guardrail_response
+
+    def _get_previous_messages(self, ctx : ChatContext):
+        previous_messages = self.conversation_store.get_messages(
+            conversation_id=ctx.conversation_id,
+            limit=settings.CHAT_HISTORY_LIMIT
+        )
+
+        ctx.log.info(
+            "chat_history_loaded",
+            history_message_count=len(previous_messages),
+        )
+
+        return previous_messages
+
+    def _build_llm_messages(self, previous_messages : list[dict], safe_input : str):
+        llm_messages =[
+            {
+                "role" : message["role"],
+                "content" : message["content"]
+            }
+            for message in previous_messages
+            if message.get("role") in {"user", "assistant"}
+            and message.get("content")
+        ]
+
+        llm_messages.append({
+            "role" : "user",
+            "content" : safe_input
+        })
+
+        return llm_messages
+
+    def _persist_user_message(self, ctx : ChatContext):
+        self.conversation_store.save_message(
+            conversation_id=ctx.conversation_id,
+            role="user",
+            content=ctx.safe_input,
+        )
+
+        ctx.log.info(
+            "user_message_saved",
+        )
+
+    def _persist_assistant_message(self, ctx : ChatContext, answer: str):
+        self.conversation_store.save_message(
+            conversation_id=ctx.conversation_id,
+            role="assistant",
+            content=answer,
+        )
+
+        ctx.log.info(
+            "assistant_message_saved",
+        )
+
+    async def _rewrite_user_query(self, llm_messages : list[dict]):
+        rewritten_query = await self.query_rewrite_llm_client.rewrite_user_query(llm_messages)
+
+        return rewritten_query
+

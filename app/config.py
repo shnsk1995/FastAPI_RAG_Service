@@ -96,7 +96,9 @@ class Settings(BaseSettings):
 #   #LLM
     ANTHROPIC_API_KEY : str
     #ANTHROPIC_API_KEY_SECRET_ARN : str   # fetched at cold start from Secrets Manager
-    ANTHROPIC_MODEL : str                # e.g. "claude-opus-4-7"
+    ANTHROPIC_OPUS_MODEL : str = "claude-opus-4-7"
+    ANTHROPIC_SONNET_MODEL: str = "claude-sonnet-4-6"
+    ANTHROPIC_HAIKU_MODEL: str = "claude-haiku-4-5-20251001"
     ANTHROPIC_MAX_TOKENS : int = 1000
     ANTHROPIC_TEMPERATURE : float = 0.5
     #PROMPT_CACHE_TTL_SECONDS  : int = 300     # informational; Anthropic cache TTL is fixed
@@ -170,6 +172,15 @@ class Settings(BaseSettings):
     "Answer clearly, briefly, and accurately. "
     "If you do not know the answer, say that you do not know."
     )
+
+    QUERY_REWRITE_SYSTEM_PROMPT: str = """
+    You are a user query rewriter.
+    Use the provide chat history and rewrite the last user query in an efficient manner.
+    Use conversation aware query rewriting strategy.
+    Do not answer the query just rewrite the user query to increase its efficiency.
+    Do not include markdown.
+    Do not include explanations.
+    """
 
     model_config = SettingsConfigDict(
         env_file=BASE_DIR / ".env",

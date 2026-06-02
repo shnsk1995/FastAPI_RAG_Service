@@ -38,7 +38,6 @@ provider "aws" {
 
 
 
-
 module "dynamodb" {
     source = "../../modules/dynamodb"
 
@@ -71,3 +70,4 @@ module "bedrock_guardrails" {
     aws_region = var.aws_region
     aws_account_id = var.aws_account_id
 }
+
