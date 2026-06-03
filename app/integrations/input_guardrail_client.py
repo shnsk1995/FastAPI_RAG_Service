@@ -102,6 +102,7 @@ class InputGuardrailClient:
 
     def _to_result(self, original_input: str, cleaned_input: str, response: dict[str, Any]) -> InputGuardrailResult:
         action = response.get("action")
+        action_reason = response.get("actionReason")
         outputs = response.get("outputs", [])
         assessments = response.get("assessments", [])
 
@@ -113,48 +114,42 @@ class InputGuardrailClient:
             fallback=cleaned_input,
         )
 
-        if action == "GUARDRAIL_INTERVENED" and prompt_attack_detected:
-            return InputGuardrailResult(
-                original_input=original_input,
-                processed_input="",
-                was_blocked=True,
-                block_reason="Prompt injection or jailbreak attempt detected.",
-                guardrail_action="blocked",
-                pii_detected=pii_detected,
-                prompt_attack_detected=True,
-            )
-
         if action == "GUARDRAIL_INTERVENED":
-            if processed_input and processed_input == "Sorry, the model cannot answer this question.":
+            if action_reason == "Guardrail masked.":
                 return InputGuardrailResult(
-                    original_input=original_input,
-                    processed_input=processed_input,
-                    was_blocked=True,
-                    block_reason="Sorry, the model cannot answer this question.",
-                    guardrail_action="blocked",
-                    pii_detected=pii_detected,
-                    prompt_attack_detected=prompt_attack_detected,
-                )
-
-            return InputGuardrailResult(
                 original_input=original_input,
-                processed_input="",
+                processed_input=processed_input,
+                was_blocked=False,
+                block_reason="N/A",
+                guardrail_action="masked",
+                pii_detected=pii_detected,
+                prompt_attack_detected=prompt_attack_detected,
+            )
+            
+
+            if action_reason == "Guardrail blocked.":
+                return InputGuardrailResult(
+                original_input=original_input,
+                processed_input=processed_input,
                 was_blocked=True,
                 block_reason="Sorry, the model cannot answer this question.",
                 guardrail_action="blocked",
                 pii_detected=pii_detected,
                 prompt_attack_detected=prompt_attack_detected,
             )
+            
 
         return InputGuardrailResult(
-            original_input=original_input,
-            processed_input=cleaned_input,
-            was_blocked=False,
-            block_reason=None,
-            guardrail_action="none",
-            pii_detected=pii_detected,
-            prompt_attack_detected=prompt_attack_detected,
-        )
+                original_input=original_input,
+                processed_input=processed_input,
+                was_blocked=False,
+                block_reason="N/A",
+                guardrail_action="none",
+                pii_detected=pii_detected,
+                prompt_attack_detected=prompt_attack_detected,
+            )
+
+        
 
     def _extract_processed_text(self, outputs: list[dict[str, Any]], fallback: str) -> str:
         if not outputs:

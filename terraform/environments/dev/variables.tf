@@ -41,8 +41,6 @@ variable "environment" {
   }
 }
 
-
-
 variable "common_tags" {
   description = "Additional tags applied to all resources"
   type        = map(string)

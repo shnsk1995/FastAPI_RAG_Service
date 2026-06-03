@@ -88,3 +88,6 @@ class ChatMessage(BaseModel):
 class ChatHistoryResponse(BaseModel):
     conversation_id: str
     chat_history: list[ChatMessage]
+
+class QueryRewriteResponse(BaseModel):
+    rewritten_query: str

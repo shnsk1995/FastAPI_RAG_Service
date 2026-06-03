@@ -33,9 +33,10 @@ Each `get_*_service` should:
 from fastapi import Depends
 from app.services.chat_service import ChatService
 from app.services.llm_client import LLMClient
+from app.services.query_rewrite_llm_client import QueryRewriteLLMClient
 from app.repositories.conversation_store import ConversationStore
 from app.integrations.input_guardrail_client import InputGuardrailClient
-from app.dependencies import get_conversation_store,get_llm_client,get_input_guardrail_client
+from app.dependencies import get_conversation_store,get_llm_client,get_input_guardrail_client,get_query_rewrite_llm_client
 
 
 
@@ -43,5 +44,10 @@ def get_chat_service(
     llm_client : LLMClient = Depends(get_llm_client), 
     conversation_store : ConversationStore = Depends(get_conversation_store),
     input_guardrail_client : InputGuardrailClient = Depends(get_input_guardrail_client),
+    query_rewrite_llm_client : QueryRewriteLLMClient = Depends(get_query_rewrite_llm_client)
     ) -> ChatService:
-    return ChatService(llm_client=llm_client, conversation_store=conversation_store, input_guardrail_client = input_guardrail_client)
+    return ChatService(
+        llm_client=llm_client,
+        conversation_store=conversation_store, 
+        input_guardrail_client = input_guardrail_client,
+        query_rewrite_llm_client=query_rewrite_llm_client)

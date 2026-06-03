@@ -31,16 +31,17 @@ Responsibilities:
 #     usage: TokenUsage
 #     stop_reason: str
 #     model: str
+import json
 from anthropic import AsyncAnthropic
 from app.config import settings
 from app.exceptions import LLMServiceError
 from app.core.logging import get_logger
+from app.schemas.chat import QueryRewriteResponse
+from app.integrations.tools import REWRITE_QUERY_TOOL
 
 logger = get_logger(__name__)
 
-
-
-class LLMClient:
+class QueryRewriteLLMClient:
 
   def __init__(self):
     if not settings.ANTHROPIC_API_KEY:
@@ -50,13 +51,13 @@ class LLMClient:
       api_key=settings.ANTHROPIC_API_KEY,
     )
 
-  async def generate_response(self, messages: list[dict[str, str]]) -> str:
+  async def rewrite_user_query(self, messages: list[dict[str, str]]) -> str:
 
     try:
 
       logger.info(
-        "llm_request_started",
-        model=settings.ANTHROPIC_OPUS_MODEL,
+        "query_rewrite_started",
+        model=settings.ANTHROPIC_SONNET_MODEL,
         message_count=len(messages),
         max_tokens=settings.ANTHROPIC_MAX_TOKENS,
         temperature=settings.ANTHROPIC_TEMPERATURE
@@ -66,26 +67,38 @@ class LLMClient:
 
 
       response = await self.client.messages.create(
-        model=settings.ANTHROPIC_OPUS_MODEL,
+        model=settings.ANTHROPIC_SONNET_MODEL,
         max_tokens=settings.ANTHROPIC_MAX_TOKENS,
         #temperature=settings.ANTHROPIC_TEMPERATURE,
-        system=settings.ANTHROPIC_SYSTEM_PROMPT,
+        system=settings.QUERY_REWRITE_SYSTEM_PROMPT,
         messages=messages,
+        tools=[REWRITE_QUERY_TOOL],
+        tool_choice={
+          "type" : "tool",
+          "name" : "rewrite_query"
+        }
       )
 
-      if not response.content:
-        raise LLMServiceError("Empty response from LLM provider.")
+      rewritten_query = None
 
-      first_block = response.content[0]
-
-      if first_block.type != "text":
-        raise LLMServiceError("Unsupported response type from LLM provider")
+      for block in response.content:
+        if block.type == "tool_use" and block.name == "rewrite_query":
+          rewritten_query = block.input["rewritten_query"]
+          break
       
-      answer = first_block.text
+      if rewritten_query is None:
+        raise LLMServiceError("Empty response from query rewrite LLM provider.")
+        
+
+      result = QueryRewriteResponse.model_validate(
+        block.input
+      )
+
+      answer = result.rewritten_query
 
       logger.info(
-        "llm_request_completed",
-        model=settings.ANTHROPIC_OPUS_MODEL,
+        "query_rewrite_completed",
+        model=settings.ANTHROPIC_SONNET_MODEL,
         answer_length=len(answer),
         input_tokens=response.usage.input_tokens if response.usage else None,
         output_tokens=response.usage.output_tokens if response.usage else None,
@@ -98,14 +111,14 @@ class LLMClient:
     except LLMServiceError:
 
       logger.warning(
-        "llm_request_failed",
-        model=settings.ANTHROPIC_OPUS_MODEL,
+        "query_rewrite_llm_request_failed",
+        model=settings.ANTHROPIC_SONNET_MODEL,
       )
 
       raise
 
     except Exception as exc:
       raise LLMServiceError(
-        f"Failed to generate response from LLM provider: {str(exc)}"
+        f"Failed to generate response from query rewrite LLM provider: {str(exc)}"
       ) from exc
 
