@@ -13,38 +13,55 @@ resource "aws_bedrock_guardrail" "this" {
       tier_name = "STANDARD"
     }
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "MEDIUM"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_strength  = "HIGH"
+      output_enabled = false
       type            = "SEXUAL"
     }
 
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "MEDIUM"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_strength  = "HIGH"
+      output_enabled = false
       type            = "VIOLENCE"
     }
 
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "MEDIUM"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_enabled = false
+      output_strength  = "HIGH"
       type            = "HATE"
     }
 
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "MEDIUM"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_enabled = false
+      output_strength  = "HIGH"
       type            = "INSULTS"
     }
 
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "MEDIUM"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_enabled = false
+      output_strength  = "HIGH"
       type            = "MISCONDUCT"
     }
 
     filters_config {
-      input_strength  = "MEDIUM"
-      output_strength = "NONE"
+      input_action = "BLOCK"
+      input_enabled = true
+      input_strength  = "HIGH"
+      output_strength  = "NONE"
       type            = "PROMPT_ATTACK"
     }
   }
@@ -52,16 +69,22 @@ resource "aws_bedrock_guardrail" "this" {
   sensitive_information_policy_config {
     pii_entities_config {
       action         = "ANONYMIZE"
+      input_enabled = true
+      output_enabled = false
       type           = "PHONE"
     }
 
     pii_entities_config {
       action         = "ANONYMIZE"
+      input_enabled = true
+      output_enabled = false
       type           = "EMAIL"
     }
 
     pii_entities_config {
       action         = "ANONYMIZE"
+      input_enabled = true
+      output_enabled = false
       type           = "US_SOCIAL_SECURITY_NUMBER"
     }
   }
@@ -81,9 +104,15 @@ resource "aws_bedrock_guardrail" "this" {
   word_policy_config {
     managed_word_lists_config {
       type = "PROFANITY"
+      input_action = "BLOCK"
+      input_enabled = true
+      output_enabled = false
     }
     words_config {
       text = "HATE"
+      input_action = "BLOCK"
+      input_enabled = true
+      output_enabled = false
     }
   }
 }
